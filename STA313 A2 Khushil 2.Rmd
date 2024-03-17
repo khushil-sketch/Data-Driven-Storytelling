@@ -1,0 +1,542 @@
+---
+title: "STA313 - Assignment 2"
+output: pdf_document
+date: "2024-02-23"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+## IMPORTING ALL THE RELEVANT LIBRARIES
+library(ggplot2)
+library(tidyverse)
+library(dplyr)
+library(ggtext)
+library(ggimage)
+#library(sf)
+#library(RColorBrewer)
+
+#library(readr)
+#library(lubridate)
+```
+
+```{r}
+## READING THE DATA
+bicycle_thefts <- read_csv("Bicycle_Thefts_Open_Data.csv", show_col_types = FALSE)
+
+## Previewing the dataset to see if its been correctly read:
+bicycle_thefts %>% 
+  head(n = 10)
+
+glimpse(bicycle_thefts)
+```
+
+
+What happened to bikes in Toronto from 2014-2023?
+
+Bike theft is a major issue in Toronto. It is not uncommon to see a bicycle 
+wheel or lock just hanging on a sidewalk railing as you walk through the city. 
+After all, all one needs to steal a bike is a bike cutter, hack, or even an 
+angle grinder which can be easily and discreetly stored in a backpack. Numerous
+victims report stolen bikes every year but there is not much being done to 
+combat these crimes. Though the punishment of the thefts can mean time in 
+prison, the amount of money that can be made from selling these stolen bikes 
+and their parts are deemed to be worth it by these thieves.
+	
+The goal of this article is to delve deeper into the factors which impact the 
+risk of bicycle theft in Toronto. These factors include: month, day of the 
+week, time of day, location of bike, neighborhood, bike make, type, and 
+lastly average price. The data that will be utilized is from the Toronto 
+Police Service Public Safety Data Portal. This data contains over 34000 
+recorded bike thefts in the city of Toronto from 2014 to 2023, along with 
+corresponding information. This article will break down this data into an 
+informative analysis which will hopefully provide some meaningful insights to 
+Toronto cyclists and those who are interested in purchasing a bike later on. 
+
+Insight 1: Which Months and Where do Thefts Occur the Most?
+
+Most thefts occur at residences, specifically apartments, and outside, and on 
+the other hand the least thefts occur on the transit. Transit being the least 
+common theft location makes sense since cyclists are most likely keeping an eye 
+on their property such that it would not be stolen. However in apartments as 
+well as outside, bikes are probably stolen because no one is keeping an eye. 
+In apartments, there are bike storage which can be found in the parking lot 
+inside or outside of the building. Once thieves are able to access these 
+locations they can choose whatever bike they like since there are going to be 
+more options than at a home. As long as the lock of the bike is breakable by a 
+lock cutter, any bike is prone to be stolen. This also applies to bikes stored
+outside. If there is no one nearby during the weekdays, it is easy to break the 
+lock and ride away quickly without being noticed.
+
+Another insight that can be taken from this graph is that thefts most commonly 
+occur during July and the hotter, summer season. During the early spring, late 
+fall, and winter, people do not tend to ride their bikes due to the weather, 
+thus they keep it indoors, locked and properly stored. However, as the weather 
+gets better, people start to take their bikes out more often and will tend to 
+leave them outside when they are not at home. This causes thefts to be more easy
+and common. 
+
+Nonetheless, in order for the crime to go unnoticed this theft should occur 
+during the dark when everyone is at home and are not paying attention to their 
+bikes whereabouts. The next section will delve deeper into this topic.
+
+```{r}
+bicycle_thefts$REPORT_MONTH <- as.character(bicycle_thefts$REPORT_MONTH)
+
+thefts_by_month_premise <- bicycle_thefts %>%
+  group_by(OCC_MONTH, PREMISES_TYPE) %>%
+  summarise(count = n(), .groups = 'drop') %>%
+  mutate(MONTH = factor(OCC_MONTH, levels = c("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December")))
+
+## Adding a season column to the data frame
+thefts_by_month_premise <- thefts_by_month_premise %>%
+  mutate(SEASON = case_when(
+    OCC_MONTH %in% c("December", "January", "February") ~ "Winter",
+    OCC_MONTH %in% c("March", "April", "May") ~ "Spring",
+    OCC_MONTH %in% c("June", "July", "August") ~ "Summer",
+    OCC_MONTH %in% c("September", "October", "November") ~ "Fall",
+    TRUE ~ NA_character_  
+  ))
+
+```
+
+```{r}
+# EXTRACTING THE TOP PREMISES IN THE DATASET
+
+top_premises <- bicycle_thefts %>%
+  count(PREMISES_TYPE) %>%
+  top_n(3, wt = n) %>%
+  pull(PREMISES_TYPE)
+
+# thefts_by_month_premise <- thefts_by_month_premise %>%
+#  mutate(Highlight = ifelse(PREMISES_TYPE %in% top_premises, PREMISES_TYPE, "Other"))
+
+thefts_by_month_premise_top_3 <- thefts_by_month_premise %>%
+  filter(PREMISES_TYPE %in% top_premises)
+
+# Reorder PREMISES_TYPE within thefts_by_month_premise_top_3 based on count
+thefts_by_month_premise_top_3 <- thefts_by_month_premise_top_3 %>%
+  mutate(PREMISES_TYPE = fct_reorder(PREMISES_TYPE, count))
+
+```
+
+```{r}
+glimpse(thefts_by_month_premise)
+```
+
+
+```{r pressure, echo=FALSE, fig.width=10, fig.height=6}
+
+# Stacked bar plot
+ggplot(thefts_by_month_premise, aes(x = MONTH, y = count, fill = PREMISES_TYPE)) +
+  geom_bar(stat = "identity") +
+  scale_fill_brewer(palette = "Set3") +  
+  labs(title = "Where Thefts Occur Each Month",
+       x = "Month",
+       y = "Count",
+       fill = "Premise Type") +
+  theme_minimal() +
+  theme(axis.title.x = element_text(face = "bold", family = "Helvetica", size = 18),
+        axis.title.y = element_text(face = "bold", family = "Helvetica", size = 18),
+        plot.title = element_text(face = "bold", family = "Helvetica", size = 18, hjust=0.5),
+        axis.text.x = element_text(face = "bold", angle = 45, hjust = 1, family = "Helvetica", size = 14),
+        axis.text.y = element_text(family = "Helvetica", size = 14))
+
+```
+
+```{r, echo=FALSE, fig.width=10, fig.height=6}
+## Displaying the same stacked barchart but with only the top 3 locations now
+
+ggplot(thefts_by_month_premise_top_3, aes(x = MONTH, y = count, fill = PREMISES_TYPE)) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = c(setNames(c("#7ee0d2", "#f27168", "#fab941"), top_premises))) +
+  geom_text(aes(label = count), position = position_stack(vjust = 0.5), color = "white", size = 3.5) +
+  labs(title = "Top 3 Theft Locations Each Month",
+       x = "Month",
+       y = "Count",
+       fill = "") +
+  theme_minimal() +
+  theme(axis.title.x = element_text(face = "bold", family = "Helvetica", size = 18),
+        axis.title.y = element_text(face = "bold", family = "Helvetica", size = 18),
+        plot.title = element_text(face = "bold", family = "Helvetica", size = 18, hjust=0.5),
+        axis.text.x = element_text(face = "bold", angle = 45, hjust = 1, family = "Helvetica", size = 14),
+        axis.text.y = element_text(family = "Helvetica", size = 14),
+        legend.text = element_text(size = 14),  
+        legend.position = "top") 
+
+
+
+```
+
+```{r}
+## GETTING THE SEASONAL THEFT COUNTS AS A PERCENTAGE OF YEARLY THEFT COUNTS
+
+# Step 1: Yearly count
+yearly_thefts_by_premises <- thefts_by_month_premise_top_3 %>%
+  group_by(PREMISES_TYPE) %>%
+  summarise(yearly_count = sum(count), .groups = 'drop')
+
+
+# Step 2: Seasonal count
+thefts_percentage_by_season <- thefts_by_month_premise_top_3 %>%
+  group_by(PREMISES_TYPE, SEASON) %>%
+  summarise(seasonal_count = sum(count), .groups = 'drop')
+
+
+# We have to Join the yearly counts with the seasonal counts to then be able to mathematical operations on the 2 different column values
+thefts_percentage_by_season <- thefts_percentage_by_season %>%
+  inner_join(yearly_thefts_by_premises, by = "PREMISES_TYPE") %>%
+  mutate("% of Yearly Count" = round((seasonal_count / yearly_count) * 100))
+
+
+
+thefts_percentage_by_season
+
+
+```
+
+
+```{r}
+```
+
+# Insight 2: Which Day do Thefts Occur the Most?
+
+Given this graph, it is evident that the weekdays experience the most thefts,
+specifically Friday while the weekend experiences the least thefts, 
+specifically Sunday. Though there is a difference present between the weekdays 
+and weekends, the difference between Saturday and Sunday is quite small, as 
+well as the difference between Wednesday and Thursday for example. Therefore, 
+it is important to understand what differentiates the weekend and the weekdays. 
+One reason could be because people are at home or are not busy during the 
+weekends, thus thieves do not want to be caught by people walking around 
+whether at home or outside. During the weekdays, people are most likely to be 
+at work and busy. As a result, there are less people paying attention to their 
+bikes and less people catching a thief stealing a bike as well. From these 
+theories, it should be evident that the most thefts will occur at residences or 
+even outside when everyone is busy at work or with other matters.
+
+
+
+```{r, fig.width=8, fig.height=6}
+# Calculate the number of thefts per day of the week
+thefts_by_day_of_week <- bicycle_thefts %>%
+  group_by(OCC_DOW) %>%
+  summarise(count = n(), .groups = 'drop') %>%
+  # Shorten the days of the week
+  mutate(OCC_DOW = factor(OCC_DOW, 
+                          levels = c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"),
+                          labels = c("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"))) %>%
+  arrange(count) %>%
+  mutate(OCC_DOW = factor(OCC_DOW, levels = unique(OCC_DOW)))
+
+thefts_by_day_of_week
+
+
+
+# Generate the horizontal bar plot with arranged order
+ggplot(thefts_by_day_of_week, aes(x = OCC_DOW, y = count, fill = OCC_DOW)) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = c("Sun" = "#4B0082",  # Golden
+                               "Mon" = "#fc0a67",  # Light Salmon
+                               "Tue" = "#f5c15b",  # Salmon
+                               "Wed" = "#f5935b",  # OrangeRed
+                               "Thu" = "#f04c1f",  # Crimson
+                               "Fri" = "#e8ca07",  # Maroon
+                               "Sat" = "#fc0ad4")) + # Indigo
+  
+  geom_text(data = subset(thefts_by_day_of_week, OCC_DOW %in% c("Fri", "Sun")), 
+            aes(label = count), hjust=2.0,vjust = 0.5, color = "white", size = 5) +
+  labs(title = "Bikes Stolen each Day | Highest to Lowest",
+       x = "",
+       y = "") +
+  theme_minimal() +
+  theme(axis.title.x = element_text(face = "bold", family = "Sans Serif", size = 20, color="white"),
+        axis.title.y = element_text(face = "bold", family = "mono", size = 14),
+        plot.title = element_text(face = "bold", family = "sans serif", size = 18, hjust = 0.5, color="white"),
+        plot.background = element_rect(fill = "black", colour = "black"), # Set plot background to black
+        axis.text.x = element_text(face = "bold", family = "mono", size = 16, color="#e0e0e0"),
+        axis.text.y = element_text(face = "bold", family = "mono", size = 16, color="#e0e0e0"),
+        legend.position = "none", # Remove legend
+        panel.grid.major = element_blank(),  # Removes major grid lines
+        panel.grid.minor = element_blank()) + # Removes minor grid lines
+  coord_flip() + # Makes the plot horizontal
+  geom_image(data = thefts_by_day_of_week, aes(x = OCC_DOW, y = count, image = "C:\\Users\\USER\\OneDrive - University of Toronto\\UofT Classes\\STA313 A2\\bike-128.ico"),size = 0.09, hjust = 0) # Adjust size and position as needed
+
+#aes(label = count), position = position_stack(vjust = 0.5), color = "white", size = 3.5
+
+```
+
+
+
+# Insight 2b: Do Thieves Prefer a Certain Time of Day?
+
+In 2023, thefts were considered to be equally probable during the evening
+(18:00-24:00) and during the afternoon (12:00-18:00), as well as equally 
+probable during the night (0:00-6:00) and morning (6:00-12:00). These parts of 
+the day can also be grouped by times when there is daylight 
+(morning and afternoon) and where there is no daylight (night and evening). 
+Given these two groupings, the count of thefts seems to be equal, indicating 
+that there is no specific preference by these thieves. 
+
+Another insight that is provided by this visualization is the number of thefts 
+that occur per year. As of 2023, thefts have considerably decreased since the 
+past 9 years. This is a positive sign for Toronto as it allows cyclists to be 
+comfortable in purchasing and/or storing their bikes. The late 2010s 
+experienced the most thefts which also represents the time during the pandemic. 
+The reason for this could be because a lot of people decided to stay at home 
+during the lockdowns and thus thieves took this as an opportunity to steal more 
+since there would be less people outside to catch them. 
+
+Given these details, it is important to consider the location in which these 
+crimes occurred since it is evident that the presence of daylight does not 
+really affect the probability of thefts. The next section will provide some 
+more information on this matter.
+
+```{r}
+bicycle_thefts_data <- bicycle_thefts %>%
+  filter(OCC_YEAR >= 2014 & OCC_YEAR <= 2023)
+
+# Preprocess the data to create a 'part_of_day' column based on 'OCC_HOUR'
+bicycle_thefts_data <- bicycle_thefts_data %>%
+  mutate(part_of_day = case_when(
+    OCC_HOUR >= 0 & OCC_HOUR < 6 ~ "Night (0:00-6:00)",
+    OCC_HOUR >= 6 & OCC_HOUR < 12 ~ "Morning (6:00-12:00)",
+    OCC_HOUR >= 12 & OCC_HOUR < 18 ~ "Afternoon (12:00-18:00)",
+    OCC_HOUR >= 18 & OCC_HOUR < 24 ~ "Evening (18:00-24:00)"
+  )) %>%
+  group_by(OCC_YEAR, part_of_day) %>%
+  summarise(count = n())
+
+bicycle_thefts_data
+
+```
+
+```{r, fig.width=12, fig.height=6}
+
+ggplot(bicycle_thefts_data, aes(x = OCC_YEAR, y = count, fill = part_of_day)) +
+  geom_area(position = 'stack') +
+  scale_fill_manual(
+    values = c("Morning (6:00-12:00)" = "#c7eaf2", 
+               "Afternoon (12:00-18:00)" = "#0a9cfc", 
+               "Evening (18:00-24:00)" = "#a00afc", 
+               "Night (0:00-6:00)" = "#eec9f5"),
+    labels = c("Morning (6:00-12:00)" = "<span style='color:#c7eaf2;'>Morning (6am to 12pm)</span>", 
+               "Afternoon (12:00-18:00)" = "<span style='color:#0a9cfc;'>Afternoon (12pm to 6pm)</span>", 
+               "Evening (18:00-24:00)" = "<span style='color:#a00afc;'>Evening (6pm to 12am)</span>", 
+               "Night (0:00-6:00)" = "<span style='color:#eec9f5;'>Night (12am to 6am)</span>")
+  ) +
+  labs(title = "What Time of Day do Thefts Occur?", x = "Year", y = "Count", fill = "Part of Day") +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  theme_minimal() +
+  theme(
+    plot.background = element_rect(fill = "black", colour = NA), 
+    legend.background = element_rect(fill = "black", colour = NA),
+    axis.title.x = element_text(face = "bold", family = "Helvetica", size =24, color="white",),
+    axis.title.y = element_text(face = "bold", family = "Helvetica", size = 18, color="white"),
+    plot.title = element_text(face = "bold", family = "Helvetica", size = 18, hjust = 0.5,color="white"),
+    axis.text.x = element_text(hjust = 1, family = "Helvetica", size = 12,color="white"),
+    axis.text.y = element_text(face = "bold", family = "Helvetica", size = 12,color="white"),
+    legend.text = element_markdown(size=12, face="bold"),  
+    legend.position = "top",
+    panel.grid.major = element_line(colour = "black"), 
+    panel.grid.minor = element_line(colour = "black"),
+    panel.ontop = TRUE)
+                               
+
+```
+
+#Insight 3. Where do Thieves Attack the Most?
+
+Given this visualization it is evident that the Yonge-Bay Corridor experiences 
+the most amount of thefts in Toronto, followed by Downtown Yonge East, 
+Wellington Place, St.Lawrence-East Bayfront-The Islands, and Annex. What is 
+common among these neighborhoods is the fact that they are all located in the 
+south of the city in the heart of Downtown Toronto. All of these places are 
+quite close to popular attractions including the CN Tower and Harbourfront. 
+It is quite surprising that these locations are vulnerable to these crimes given
+the fact that these regions contain very high-end restaurants, hotels, and large
+corporation offices. However, since these areas are considered to be “rich” as a
+result of the high-end places in the neighborhoods, that could also suggest 
+that the people also possess quite some money to spend on things such as bikes. 
+Thus, thieves might consider these neighborhoods as ideal spots to steal
+high-end bikes as well. The next section will verify whether or not the bikes 
+stolen are actually high value or not.
+
+```{r}
+# Read the data from the CSV file
+bicycle_thefts_data <- read_csv("Bicycle_Thefts_Open_Data.csv", show_col_types = FALSE)
+
+# Count thefts per neighbourhood
+thefts_per_neighbourhood <- bicycle_thefts_data %>%
+  group_by(NEIGHBOURHOOD_158) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count)) %>%
+  top_n(5, count)
+
+# Plot the data
+ggplot(thefts_per_neighbourhood, aes(x = reorder(NEIGHBOURHOOD_158, count), y = count)) +
+   geom_bar(stat = "identity", fill = "skyblue") +
+ 
+  coord_flip() + # Flip coordinates to have neighbourhoods on the y-axis
+  theme_minimal() +
+  labs(title = "Neighbourhoods that experienced the most thefts", x = "Count of Thefts", y = "Neighbourhood") +
+  scale_x_discrete(name = "Neighbourhood") +
+  scale_y_continuous(name = "Count of Thefts")
+
+```
+
+#Insight 4: What is the Average Cost and Make of the Bikes Stolen?
+
+The most stolen bike brand is GIANT, of which 2660 of them were stolen. Among 
+GIANT were other brands including NORCO and TREK which also experienced a 
+considerable amount of thefts. One thing to note is the average cost of these 
+bikes which were all in a similar range of around $1000. To put this into
+context, one of the cheapest bikes stolen was $50, and one of the most expensive 
+bikes stolen was $10000. Therefore, on average the thieves are stealing bikes 
+that are more expensive which makes sense given the neighborhoods in which they 
+are being stolen from. However, it might be important to note the type of bikes 
+that are being stolen which will be explained in the next section. 
+
+```{r}
+# Read the data from the CSV file
+bicycle_thefts_data <- read_csv("Bicycle_Thefts_Open_Data.csv", show_col_types = FALSE)
+
+# Consolidate "OT" into "OTHER" for BIKE_MAKE
+bicycle_thefts_data$BIKE_MAKE <- ifelse(bicycle_thefts_data$BIKE_MAKE == "OT", "OTHER", bicycle_thefts_data$BIKE_MAKE)
+
+bicycle_thefts_data$BIKE_MAKE <- dplyr::recode(bicycle_thefts_data$BIKE_MAKE,
+                                               "GI" = "GIANT",
+                                               "NO" = "NORCO",
+                                               "TR" = "TREK",
+                                               "UK" = "UNKNOWN",
+                                               .default = bicycle_thefts_data$BIKE_MAKE)
+
+# Filter out records without bike cost and then compute the necessary aggregations
+bike_make_stats <- bicycle_thefts_data %>%
+  filter(!is.na(BIKE_COST) & BIKE_COST > 0) %>%
+  group_by(BIKE_MAKE) %>%
+  summarise(
+    Count = n(),
+    Avg_Cost = mean(BIKE_COST, na.rm = TRUE)
+  ) %>%
+  arrange(desc(Count)) %>%
+  top_n(5, Count)
+
+# Plot the data with modified aesthetics
+ggplot(bike_make_stats, aes(y = Avg_Cost, x = BIKE_MAKE)) +
+  geom_point(aes(size = Count, color = BIKE_MAKE), alpha = 0.7) +
+  geom_text(aes(label = Count), vjust = 0.5, color = "white", size = 3) + # Adjust text size and position
+  scale_size_area(max_size = 30, name = "Count", breaks = bike_make_stats$Count) + # Make bubbles bigger
+  scale_color_manual(values = c("black", "black", "black", "black", "black"), guide = FALSE) + # Remove legend for make
+  scale_y_continuous(breaks = seq(500, 1500, by = 100), limits = c(500, 1500)) + # Adjust y-axis limits
+  theme_minimal() +
+  labs(title = "Top 5 Stolen Bike Makes and Their Average Costs",
+       y = "Average Cost ($)",
+       x = "Bike Make",
+       size = "Number of Thefts") +
+  theme(legend.position = "bottom")
+
+```
+# Insight 5: What Type of Bikes do Thieves Prefer?
+
+Thieves have most commonly targeted MOUNTAIN and REGULAR bikes compared to
+other types such as ELECTRIC and RACER. This makes sense given the previous
+graph which showed that the average cost of the bikes stolen were around $1000.
+The prices of electric and racer bikes are much more than $1000, thus it would
+not make sense for a lot of them to be stolen. Even though thieves might want
+to take a more expensive item, this also is not always the case. One of the
+reasons is because the thieves do not always keep the bikes they steal. Instead 
+the bikes are sold, or taken apart to sell in pieces. The odds of finding
+customers for pricey bikes are not common, thus it is ideal to steal bikes that
+are decently priced such that there are more customers willing to buy, and the
+thieves are able to make a good amount of money.
+
+```{r}
+# Read the data from the CSV file
+bicycle_thefts_data <- read_csv("Bicycle_Thefts_Open_Data.csv", show_col_types = FALSE)
+
+# Recode BIKE_TYPE abbreviations to full names
+bicycle_thefts_data$BIKE_TYPE <- recode(bicycle_thefts_data$BIKE_TYPE,
+                                        "MT" = "MOUNTAIN",
+                                        "EL" = "ELECTRIC",
+                                        "OT" = "OTHER",
+                                        "RC" = "RACER",
+                                        "RG" = "REGULAR",
+                                        .default = bicycle_thefts_data$BIKE_TYPE)
+
+# Group and summarize the data by BIKE_TYPE, then calculate the count
+bike_type_stats <- bicycle_thefts_data %>%
+  group_by(BIKE_TYPE) %>%
+  summarise(Count = n()) %>%
+  arrange(desc(Count)) %>%
+  top_n(5, Count) # Select the top 5 bike types based on theft count
+
+# Create the bar chart
+ggplot(bike_type_stats, aes(x = BIKE_TYPE, y = Count)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  labs(title = "Top 5 Bike Types by Theft Count",
+       x = "Bike Type",
+       y = "Count of Thefts") +
+  theme_minimal() +
+  theme(legend.position = "none") # Hide the legend since the fill color is uniform
+```
+
+To end off, this chart highlights the fact that most bikes that are stolen are 
+never recovered. 
+
+```{r pressure, echo=FALSE}
+
+# Read the dataset
+bicycle_thefts <- read_csv("Bicycle_Thefts_Open_Data.csv")
+
+# Calculate the number of thefts by status
+thefts_by_status <- bicycle_thefts %>%
+  group_by(STATUS) %>%
+  summarise(count = n())
+
+# Create the pie chart
+ggplot(thefts_by_status, aes(x = "", y = count, fill = STATUS)) +
+  geom_bar(width = 1, stat = "identity") +
+  coord_polar("y", start = 0) +
+  theme_void() +
+  labs(title = "The Condition of Recovery") +
+  theme(legend.title = element_blank()) +
+  scale_fill_manual(values = c("RECOVERED" = "skyblue", "STOLEN" = "red", "UNKNOWN" = "darkblue"))
+```
+
+Summary of Findings
+
+To end off, this chart highlights the fact that most bikes that are stolen are 
+never recovered. Therefore, it is important to gather information about these
+thefts such that proactive actions can be taken to avoid these crimes. This
+article has gathered the following information about the  most common type of
+bike thefts from 2014-2023:
+
+Day: Friday (Weekdays)
+Month: July (Summer Season)
+Time of Day: Anytime
+Premises type: Apartment + Outside
+Neighborhood: Yonge-Bay Corridor (Downtown Toronto)
+Make: GIANT
+Type: Mountain
+Average Cost: $1000
+
+Given these characteristics of the most common bike thefts, cyclists should 
+take the necessary precautions to avoid these crimes. This could mean buying a
+better lock, or just being weary of the location of where the bike is stored and 
+its security. 
+
+It is important for everyone to look into this data as cycling is a great way
+of commuting. It avoids using cars and public transit which are contributors to 
+pollution and as the planet is being cared for, cyclists are able to enjoy some
+good exercise and fresh air while riding. The goal of this article is to not 
+prevent people from buying bicycles but to promote an idea of increased
+awareness when storing and securing them.
+
+To end off, even though this article provides a lot of useful information from
+the data provided by the Toronto Police Service, there is much more extra data
+that can be used to make this analysis more holistic. For example, analyzing
+the types of locks that were used to secure the bike can give more insights as 
+to how easy or difficult the theft is, and how long it takes. Thus, cyclists 
+can do more research into finding out the best ways to stay safe from these
+unfortunate crimes. 
