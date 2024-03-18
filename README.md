@@ -4,8 +4,11 @@ Analyzing Bike Thefts in Toronto
 
  ![image](https://github.com/khushil-sketch/Data-Driven-Storytelling/assets/52947378/b22e7aea-3307-49e9-aa8d-38ced0f7faad)
 
- ![image](https://github.com/khushil-sketch/Data-Driven-Storytelling/assets/52947378/1f78e410-4c68-49ed-a42d-5e81188227ef)
+ ![image](https://github.com/khushil-sketch/Data-Driven-Storytelling/assets/52947378/6a5e2d59-3e3a-4a8b-8156-c13d8e698335)
 
-![image](https://github.com/khushil-sketch/Data-Driven-Storytelling/assets/52947378/6a5e2d59-3e3a-4a8b-8156-c13d8e698335)
+![image](https://github.com/khushil-sketch/Data-Driven-Storytelling/assets/52947378/83fd4856-b740-4ca8-9535-7575b9a1760a)
 
 ![image](https://github.com/khushil-sketch/Data-Driven-Storytelling/assets/52947378/74d432aa-7600-4163-a68c-02fb904bc979)
+
+![image](https://github.com/khushil-sketch/Data-Driven-Storytelling/assets/52947378/f3c8eb92-54ac-4448-8444-366e24628530)
+
