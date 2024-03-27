@@ -1,6 +1,6 @@
 # Data-Driven-Storytelling
 ## Analyzing Bike Thefts in Toronto. 
-Its a work in progress, but here are some of my visualizations!
+Here are some of my visualizations! Check out the report attached for the full Data-Driven Story
  
 ![image](https://github.com/khushil-sketch/Data-Driven-Storytelling/assets/52947378/74d432aa-7600-4163-a68c-02fb904bc979)
 
